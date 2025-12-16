@@ -1,0 +1,82 @@
+# This file documents the high-level orchestration of the system in POML.
+# It is useful both for human understanding (investors, PMs) and for
+# potential runtime engines that can execute POML-defined flows.
+
+flow "company-visibility" {
+  description = "Check company visibility across three LLMs and produce dashboard insights."
+
+  input "company" {
+    type = "CompanyProfile"
+  }
+
+  # Step 1: Generate realistic questions that simulate user search behavior.
+  step "generate-questions" {
+    uses = "agent.questionGenerator"
+    with = { company = "@flow.company" }
+    output = "questionsResult"
+  }
+
+  # Step 2: Run visibility checks for each LLM provider independently.
+  step "visibility-openai" {
+    uses = "agent.visibility"
+    with = {
+      provider  = "openai"
+      company   = "@flow.company"
+      questions = "@step.generate-questions.questionsResult.questions"
+    }
+    output = "openaiResult"
+  }
+
+  step "visibility-anthropic" {
+    uses = "agent.visibility"
+    with = {
+      provider  = "anthropic"
+      company   = "@flow.company"
+      questions = "@step.generate-questions.questionsResult.questions"
+    }
+    output = "anthropicResult"
+  }
+
+  step "visibility-gemini" {
+    uses = "agent.visibility"
+    with = {
+      provider  = "gemini"
+      company   = "@flow.company"
+      questions = "@step.generate-questions.questionsResult.questions"
+    }
+    output = "geminiResult"
+  }
+
+  # Step 3: Aggregate all results into a single dashboard payload.
+  step "dashboard" {
+    uses = "agent.dashboard"
+    with = {
+      company        = "@flow.company"
+      questions      = "@step.generate-questions.questionsResult.questions"
+      providerResults = [
+        "@step.visibility-openai.openaiResult",
+        "@step.visibility-anthropic.anthropicResult",
+        "@step.visibility-gemini.geminiResult"
+      ]
+    }
+    output = "dashboardResult"
+  }
+
+  # Final output of the flow that the API returns to the frontend.
+  output "result" {
+    from = "@step.dashboard.dashboardResult"
+  }
+}
+
+# Mapping POML tools to actual TypeScript implementations.
+tool "agent.questionGenerator" {
+  implementation = "server/src/agents.ts#questionGeneratorAgent"
+}
+
+tool "agent.visibility" {
+  implementation = "server/src/agents.ts#visibilityAgentForProvider"
+}
+
+tool "agent.dashboard" {
+  implementation = "server/src/agents.ts#dashboardAgent"
+}
