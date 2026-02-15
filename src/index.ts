@@ -1,8 +1,12 @@
+import dotenv from 'dotenv'
+
 import express from "express";
 import cors from "cors";
 import { runVisibilityFlow } from "./agents";
 import type { CompanyProfile } from "./types";
 import "dotenv/config";
+import testRouter from './routes/test'
+
 /**
  * This file exposes a simple HTTP API for the frontend.
  * In production this can be:
@@ -10,8 +14,10 @@ import "dotenv/config";
  *  - deployed to any cloud (AWS, GCP, Azure),
  *  - integrated with authentication and billing.
  */
-
+dotenv.config()
 const app = express();
+app.use('/api', testRouter)
+
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://beapp-web.vercel.app", "https://<your-custom-domain.com>"],
